@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yönetim Paneli — Istanbul Clothing Online</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#0e0f12; --surface:#17181d; --surface2:#1f2027;
+  --line:#2b2c34; --text:#f2f2f4; --muted:#8f8f99;
+  --accent:#4a9eff; --accent2:#6db3ff; --ok:#3fb950; --danger:#e5534b;
+  --warn:#d29922;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;
+  font-weight:300;-webkit-font-smoothing:antialiased;font-size:14px}
+button{font-family:inherit;cursor:pointer;border:none}
+input,select,textarea{font-family:inherit}
+img{display:block}
+
+/* LOGIN */
+.login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.login-box{background:var(--surface);border:1px solid var(--line);
+  border-radius:16px;padding:40px;max-width:380px;width:100%;text-align:center}
+.login-box h1{font-size:22px;font-weight:600;margin-bottom:8px}
+.login-box p{color:var(--muted);margin-bottom:24px}
+.login-box input{width:100%;background:var(--surface2);border:1px solid var(--line);
+  color:var(--text);padding:13px 15px;border-radius:10px;font-size:15px;margin-bottom:14px}
+.login-box input:focus{outline:none;border-color:var(--accent)}
+.login-box button{width:100%;background:var(--accent);color:#fff;padding:13px;
+  border-radius:10px;font-size:15px;font-weight:500}
+.login-box button:hover{background:var(--accent2)}
+.login-err{color:var(--danger);font-size:13px;margin-top:10px;min-height:18px}
+
+/* APP */
+.app{display:none}
+header{position:sticky;top:0;z-index:40;background:rgba(14,15,18,.9);
+  backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.nav{max-width:1300px;margin:0 auto;padding:16px 24px;display:flex;
+  align-items:center;justify-content:space-between;gap:16px}
+.nav h1{font-size:18px;font-weight:600}
+.nav h1 span{color:var(--accent)}
+.tabs{display:flex;gap:8px}
+.tab{background:var(--surface2);border:1px solid var(--line);color:var(--muted);
+  padding:8px 18px;border-radius:8px;font-size:13.5px;font-weight:400}
+.tab.active{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:500}
+.logout{background:none;color:var(--muted);font-size:13px;text-decoration:underline}
+
+main{max-width:1300px;margin:0 auto;padding:24px}
+.bar{display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
+.search{flex:1;min-width:200px;background:var(--surface);border:1px solid var(--line);
+  color:var(--text);padding:11px 15px;border-radius:10px;font-size:14px}
+.search:focus{outline:none;border-color:var(--accent)}
+.stat{color:var(--muted);font-size:13px}
+.stat b{color:var(--text)}
+
+/* PRODUCT ROW */
+.prod{background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  margin-bottom:14px;overflow:hidden}
+.prod-head{display:flex;gap:16px;padding:16px;align-items:center;cursor:pointer}
+.prod-head:hover{background:var(--surface2)}
+.prod-img{width:64px;height:64px;border-radius:10px;object-fit:cover;
+  background:var(--surface2);flex-shrink:0}
+.prod-main{flex:1;min-width:0}
+.prod-marka{font-size:15px;font-weight:500}
+.prod-meta{color:var(--muted);font-size:12.5px;margin-top:3px}
+.prod-price{font-weight:600;color:var(--accent2);font-size:16px}
+.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;
+  font-weight:500;margin-left:6px}
+.badge.on{background:rgba(63,185,80,.15);color:var(--ok)}
+.badge.off{background:rgba(229,83,75,.15);color:var(--danger)}
+.chev{color:var(--muted);font-size:18px;transition:.2s}
+.prod.open .chev{transform:rotate(90deg)}
+
+/* PRODUCT DETAIL */
+.prod-body{display:none;padding:0 16px 16px;border-top:1px solid var(--line)}
+.prod.open .prod-body{display:block}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:12px;margin:16px 0}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
+.field input,.field select{width:100%;background:var(--surface2);
+  border:1px solid var(--line);color:var(--text);padding:9px 12px;
+  border-radius:8px;font-size:13.5px}
+.field input:focus,.field select:focus{outline:none;border-color:var(--accent)}
+
+.colors-title{font-size:13px;color:var(--muted);margin:16px 0 10px;font-weight:500}
+.color-row{display:flex;gap:12px;align-items:center;background:var(--surface2);
+  border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px}
+.color-thumb{width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0}
+.color-swatch{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);flex-shrink:0}
+.color-name-input{flex:1;background:var(--bg);border:1px solid var(--line);
+  color:var(--text);padding:8px 12px;border-radius:8px;font-size:13.5px}
+.color-name-input:focus{outline:none;border-color:var(--accent)}
+.color-palette{display:flex;gap:6px;flex-wrap:wrap;max-width:280px}
+.pal{width:24px;height:24px;border-radius:50%;cursor:pointer;
+  border:2px solid transparent;transition:.15s}
+.pal:hover{transform:scale(1.15)}
+.pal.sel{border-color:#fff}
+.color-imgcount{color:var(--muted);font-size:12px;white-space:nowrap}
+
+.actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.btn{padding:10px 18px;border-radius:9px;font-size:13.5px;font-weight:500}
+.btn-save{background:var(--accent);color:#fff}
+.btn-save:hover{background:var(--accent2)}
+.btn-toggle{background:var(--surface2);color:var(--text);border:1px solid var(--line)}
+.btn-toggle:hover{border-color:var(--warn)}
+.btn-del{background:var(--surface2);color:var(--danger);border:1px solid var(--line)}
+.btn-del:hover{background:rgba(229,83,75,.1);border-color:var(--danger)}
+
+/* ORDERS */
+.order{background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:18px;margin-bottom:14px}
+.order-head{display:flex;justify-content:space-between;align-items:flex-start;
+  gap:12px;flex-wrap:wrap}
+.order-id{font-size:16px;font-weight:600}
+.order-date{color:var(--muted);font-size:12px}
+.order-status{padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500}
+.order-status.yeni{background:rgba(210,153,34,.15);color:var(--warn)}
+.order-status.bildirildi{background:rgba(74,158,255,.15);color:var(--accent)}
+.order-status.tamamlandi{background:rgba(63,185,80,.15);color:var(--ok)}
+.order-status.iptal{background:rgba(229,83,75,.15);color:var(--danger)}
+.order-info{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:10px;margin:14px 0;font-size:13px}
+.order-info div span{color:var(--muted)}
+.order-items{background:var(--surface2);border-radius:10px;padding:12px;margin:12px 0}
+.order-item{font-size:13px;padding:4px 0}
+.order-total{font-size:16px;font-weight:600;color:var(--accent2)}
+.order-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.order-actions select{background:var(--surface2);border:1px solid var(--line);
+  color:var(--text);padding:8px 12px;border-radius:8px;font-size:13px}
+
+.empty{text-align:center;padding:70px 20px;color:var(--muted)}
+.spin{width:32px;height:32px;border:3px solid var(--line);border-top-color:var(--accent);
+  border-radius:50%;margin:0 auto 16px;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:var(--ok);color:#fff;padding:13px 24px;border-radius:11px;font-weight:500;
+  z-index:100;opacity:0;transition:.3s}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.toast.err{background:var(--danger)}
+
+@media(max-width:640px){
+  .tabs{flex:1}
+  .tab{flex:1;text-align:center;padding:8px 6px}
+  .nav{flex-wrap:wrap}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login" id="login">
+  <div class="login-box">
+    <h1>Yönetim Paneli</h1>
+    <p>Istanbul Clothing Online</p>
+    <input type="password" id="pass" placeholder="Şifre" onkeydown="if(event.key==='Enter')giris()">
+    <button onclick="giris()">Giriş</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="app">
+  <header>
+    <div class="nav">
+      <h1>Istanbul <span>Clothing</span> · Panel</h1>
+      <div class="tabs">
+        <button class="tab active" id="tab-urunler" onclick="setTab('urunler')">Ürünler</button>
+        <button class="tab" id="tab-siparisler" onclick="setTab('siparisler')">Siparişler</button>
+      </div>
+      <button class="logout" onclick="cikis()">Çıkış</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- URUNLER -->
+    <div id="view-urunler">
+      <div class="bar">
+        <input class="search" id="search" placeholder="Marka ara…" oninput="renderUrunler()">
+        <span class="stat" id="urunStat"></span>
+      </div>
+      <div id="urunList"><div class="empty"><div class="spin"></div>Yükleniyor…</div></div>
+    </div>
+
+    <!-- SIPARISLER -->
+    <div id="view-siparisler" style="display:none">
+      <div class="bar">
+        <span class="stat" id="siparisStat"></span>
+      </div>
+      <div id="siparisList"><div class="empty"><div class="spin"></div>Yükleniyor…</div></div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ CONFIG ============ */
+const SUPABASE_URL = "https://sdwdksbslzieduuuingh.supabase.co";
+const SUPABASE_KEY = "sb_publishable_uKQbF_xuGJ8aPEK0kV2SxA_6Tyy5_WL";
+
+// >>> PANEL SIFRESINI BURAYA YAZ <<<
+const SIFRE = "istanbul1453";
+/* ================================ */
+
+const PALET = [
+  {ad:"Siyah",hex:"#1a1a1a"},{ad:"Beyaz",hex:"#f5f5f5"},{ad:"Gri",hex:"#8a8a8a"},
+  {ad:"Bej",hex:"#d8c4a0"},{ad:"Kahve",hex:"#6b4423"},{ad:"Camel",hex:"#c19a6b"},
+  {ad:"Bordo",hex:"#6d1f2c"},{ad:"Kırmızı",hex:"#c0392b"},{ad:"Pembe",hex:"#e8a0b8"},
+  {ad:"Pudra",hex:"#e8d0c8"},{ad:"Mavi",hex:"#2c5aa0"},{ad:"Lacivert",hex:"#1a2744"},
+  {ad:"Yeşil",hex:"#3a6b47"},{ad:"Oranj",hex:"#e08a2b"},{ad:"Sarı",hex:"#e0c040"},
+  {ad:"Krem",hex:"#f0e8d8"},{ad:"Gold",hex:"#c9a24b"},{ad:"Silver",hex:"#c0c0c0"},
+  {ad:"Mor",hex:"#6b4a8a"},{ad:"Turuncu",hex:"#e0722b"},
+];
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+const esc = s => (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+let URUNLER = [];
+let SIPARISLER = [];
+
+function toast(msg,err){
+  const t=$('toast');t.textContent=msg;t.className='toast show'+(err?' err':'');
+  setTimeout(()=>t.className='toast',2400);
+}
+
+/* ---------- LOGIN ---------- */
+function giris(){
+  if($('pass').value===SIFRE){
+    sessionStorage.setItem('panel_ok','1');
+    ac();
+  }else{
+    $('loginErr').textContent='Yanlış şifre';
+  }
+}
+function cikis(){sessionStorage.removeItem('panel_ok');location.reload()}
+
+function ac(){
+  $('login').style.display='none';
+  $('app').style.display='block';
+  loadUrunler();
+  loadSiparisler();
+}
+
+if(sessionStorage.getItem('panel_ok')==='1'){ac()}
+
+/* ---------- TABS ---------- */
+function setTab(t){
+  ['urunler','siparisler'].forEach(x=>{
+    $('tab-'+x).classList.toggle('active',x===t);
+    $('view-'+x).style.display = x===t?'block':'none';
+  });
+}
+
+/* ---------- LOAD URUNLER ---------- */
+async function loadUrunler(){
+  try{
+    const {data:u} = await sb.from('urunler').select('*').order('olusturma',{ascending:false});
+    const ids=(u||[]).map(x=>x.id);
+    let r=[];
+    if(ids.length){
+      const rr=await sb.from('renkler').select('*').in('urun_id',ids).order('sira');
+      r=rr.data||[];
+    }
+    URUNLER=(u||[]).map(x=>({...x,renkler:r.filter(y=>y.urun_id===x.id)}));
+    renderUrunler();
+  }catch(e){
+    $('urunList').innerHTML=`<div class="empty">Yüklenemedi: ${esc(e.message)}</div>`;
+  }
+}
+
+function ilkGorsel(p){
+  for(const r of p.renkler){
+    if(r.gorseller?.length){
+      return r.gorseller.find(g=>!/\.mp4($|\?)/i.test(g))||r.gorseller[0];
+    }
+  }
+  return '';
+}
+
+function renderUrunler(){
+  const q=($('search').value||'').toLowerCase();
+  const list=URUNLER.filter(p=>(p.marka||'').toLowerCase().includes(q));
+  $('urunStat').innerHTML=`<b>${list.length}</b> ürün · <b>${URUNLER.filter(p=>p.aktif).length}</b> aktif`;
+  if(!list.length){$('urunList').innerHTML='<div class="empty">Ürün yok.</div>';return}
+  $('urunList').innerHTML=list.map(p=>urunHTML(p)).join('');
+}
+
+function urunHTML(p){
+  const img=ilkGorsel(p);
+  const gender=(p.cinsiyet||[]).length===2?'Unisex':(p.cinsiyet||[])[0]||'?';
+  return `<div class="prod" id="prod-${p.id}">
+    <div class="prod-head" onclick="toggleProd(${p.id})">
+      <img class="prod-img" src="${esc(img)}" onerror="this.style.opacity=.2">
+      <div class="prod-main">
+        <div class="prod-marka">${esc(p.marka)}
+          <span class="badge ${p.aktif?'on':'off'}">${p.aktif?'AKTİF':'GİZLİ'}</span></div>
+        <div class="prod-meta">${esc(gender)} · ${esc(p.tip||'tip yok')} · ${p.renkler.length} renk · ${(p.bedenler||[]).join(',')}</div>
+      </div>
+      <div class="prod-price">£${p.fiyat_gbp||'?'}</div>
+      <div class="chev">›</div>
+    </div>
+    <div class="prod-body">
+      <div class="fields">
+        <div class="field"><label>Marka</label><input id="f-marka-${p.id}" value="${esc(p.marka)}"></div>
+        <div class="field"><label>Tip</label>
+          <select id="f-tip-${p.id}">
+            ${['','SNEAKERS','BOOTS','OXFORD','HEELS','LOAFER','SANDAL','BAG'].map(t=>
+              `<option value="${t}" ${p.tip===t?'selected':''}>${t||'—'}</option>`).join('')}
+          </select></div>
+        <div class="field"><label>Fiyat £</label><input type="number" id="f-gbp-${p.id}" value="${p.fiyat_gbp||''}"></div>
+        <div class="field"><label>Fiyat €</label><input type="number" id="f-eur-${p.id}" value="${p.fiyat_eur||''}"></div>
+        <div class="field"><label>Bedenler (virgülle)</label><input id="f-bed-${p.id}" value="${(p.bedenler||[]).join(',')}"></div>
+      </div>
+
+      <div class="colors-title">Renkler — her gruba isim seçin</div>
+      ${p.renkler.map(r=>renkHTML(p.id,r)).join('')}
+
+      <div class="actions">
+        <button class="btn btn-save" onclick="kaydet(${p.id})">Kaydet</button>
+        <button class="btn btn-toggle" onclick="toggleAktif(${p.id},${p.aktif})">${p.aktif?'Gizle':'Göster'}</button>
+        <button class="btn btn-del" onclick="urunSil(${p.id})">Sil</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renkHTML(urunId,r){
+  const img=(r.gorseller||[]).find(g=>!/\.mp4($|\?)/i.test(g))||'';
+  const vidCount=(r.gorseller||[]).filter(g=>/\.mp4($|\?)/i.test(g)).length;
+  const imgCount=(r.gorseller||[]).length-vidCount;
+  const sel=PALET.find(x=>x.ad===r.renk_adi);
+  return `<div class="color-row">
+    <img class="color-thumb" src="${esc(img)}" onerror="this.style.opacity=.2">
+    <div class="color-swatch" id="sw-${r.id}" style="background:${sel?sel.hex:'transparent'}"></div>
+    <input class="color-name-input" id="rk-${r.id}" value="${esc(r.renk_adi||'')}" placeholder="Renk adı" readonly>
+    <div class="color-palette">
+      ${PALET.map(c=>`<div class="pal ${r.renk_adi===c.ad?'sel':''}" title="${c.ad}"
+        style="background:${c.hex}" onclick="renkSec(${r.id},'${c.ad}','${c.hex}')"></div>`).join('')}
+    </div>
+    <span class="color-imgcount">${imgCount} foto${vidCount?', '+vidCount+' video':''}</span>
+  </div>`;
+}
+
+function toggleProd(id){$('prod-'+id).classList.toggle('open')}
+
+function renkSec(renkId,ad,hex){
+  $('rk-'+renkId).value=ad;
+  $('sw-'+renkId).style.background=hex;
+  // paldeki secimi guncelle
+  const row=$('rk-'+renkId).closest('.color-row');
+  row.querySelectorAll('.pal').forEach(p=>p.classList.toggle('sel',p.title===ad));
+}
+
+/* ---------- SAVE ---------- */
+async function kaydet(id){
+  const p=URUNLER.find(x=>x.id===id);
+  const marka=$('f-marka-'+id).value.trim();
+  const tip=$('f-tip-'+id).value||null;
+  const gbp=parseInt($('f-gbp-'+id).value)||null;
+  const eur=parseInt($('f-eur-'+id).value)||null;
+  const bed=$('f-bed-'+id).value.split(',').map(x=>parseInt(x.trim())).filter(x=>!isNaN(x));
+
+  try{
+    await sb.from('urunler').update({
+      marka, tip, fiyat_gbp:gbp, fiyat_eur:eur, bedenler:bed
+    }).eq('id',id);
+
+    // renk adlarini kaydet
+    for(const r of p.renkler){
+      const ad=$('rk-'+r.id).value.trim()||null;
+      await sb.from('renkler').update({renk_adi:ad}).eq('id',r.id);
+    }
+    toast('Kaydedildi');
+    await loadUrunler();
+  }catch(e){toast('Hata: '+e.message,true)}
+}
+
+async function toggleAktif(id,aktif){
+  try{
+    await sb.from('urunler').update({aktif:!aktif}).eq('id',id);
+    toast(aktif?'Gizlendi':'Gösterildi');
+    await loadUrunler();
+  }catch(e){toast('Hata: '+e.message,true)}
+}
+
+async function urunSil(id){
+  if(!confirm('Bu ürün silinsin mi? (Görseller depoda kalır)'))return;
+  try{
+    await sb.from('renkler').delete().eq('urun_id',id);
+    await sb.from('urunler').delete().eq('id',id);
+    toast('Silindi');
+    await loadUrunler();
+  }catch(e){toast('Hata: '+e.message,true)}
+}
+
+/* ---------- SIPARISLER ---------- */
+async function loadSiparisler(){
+  try{
+    const {data}=await sb.from('siparisler').select('*').order('olusturma',{ascending:false});
+    SIPARISLER=data||[];
+    renderSiparisler();
+  }catch(e){
+    $('siparisList').innerHTML=`<div class="empty">Yüklenemedi: ${esc(e.message)}</div>`;
+  }
+}
+
+function renderSiparisler(){
+  const yeni=SIPARISLER.filter(s=>s.durum==='yeni'||s.durum==='bildirildi').length;
+  $('siparisStat').innerHTML=`<b>${SIPARISLER.length}</b> sipariş · <b>${yeni}</b> bekleyen`;
+  if(!SIPARISLER.length){$('siparisList').innerHTML='<div class="empty">Sipariş yok.</div>';return}
+  $('siparisList').innerHTML=SIPARISLER.map(s=>siparisHTML(s)).join('');
+}
+
+function siparisHTML(s){
+  const tarih=new Date(s.olusturma).toLocaleString('tr-TR');
+  const sepet=Array.isArray(s.sepet)?s.sepet:[];
+  const durum=s.durum||'yeni';
+  return `<div class="order">
+    <div class="order-head">
+      <div>
+        <span class="order-id">Sipariş #${s.id}</span>
+        <span class="order-status ${durum}">${durum.toUpperCase()}</span>
+        <div class="order-date">${tarih}</div>
+      </div>
+      <div class="order-total">£${s.tutar_gbp||'?'}</div>
+    </div>
+    <div class="order-info">
+      <div><span>Müşteri:</span> ${esc(s.musteri_ad)}</div>
+      <div><span>Telefon:</span> ${esc(s.telefon)}</div>
+      <div><span>E-posta:</span> ${esc(s.eposta||'-')}</div>
+      <div><span>Ödeme:</span> ${esc(s.odeme_yontemi||'-')}</div>
+    </div>
+    <div class="order-info"><div><span>Adres:</span> ${esc(s.adres||'-')}</div></div>
+    ${s.not_?`<div class="order-info"><div><span>Not:</span> ${esc(s.not_)}</div></div>`:''}
+    <div class="order-items">
+      ${sepet.map(i=>`<div class="order-item">• ${esc(i.marka)} — Beden ${esc(i.beden)}${i.renk?' (Renk '+i.renk+')':''} × ${i.adet||1} — £${i.fiyat||'?'}</div>`).join('')||'—'}
+    </div>
+    <div class="order-actions">
+      <select onchange="durumDegistir(${s.id},this.value)">
+        ${['yeni','bildirildi','tamamlandi','iptal'].map(d=>
+          `<option value="${d}" ${durum===d?'selected':''}>${d}</option>`).join('')}
+      </select>
+      <a class="btn btn-toggle" href="https://wa.me/${(s.telefon||'').replace(/[^0-9]/g,'')}" target="_blank">WhatsApp</a>
+    </div>
+  </div>`;
+}
+
+async function durumDegistir(id,durum){
+  try{
+    await sb.from('siparisler').update({durum}).eq('id',id);
+    toast('Durum güncellendi');
+    await loadSiparisler();
+  }catch(e){toast('Hata: '+e.message,true)}
+}
+</script>
+</body>
+</html>
